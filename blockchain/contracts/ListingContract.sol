@@ -26,7 +26,9 @@ contract ListingContract is Ownable {
 
     mapping(address => mapping(uint256 => uint256)) public renterAccessExpiration;
     mapping(address => mapping(uint256 => bool)) public buyerAccess;
-    mapping(uint256 => mapping(address => bool)) public likedBy; // Mapping to track likes by user
+    mapping(uint256 => mapping(address => bool)) public likedBy; 
+
+    mapping(string => bool) public ipfsLinkExists; 
 
     event ListingCreated(uint256 listingId, address creator, string ipfsLink, uint256 price, uint256 rentPricePerHour, uint256 minRentDuration, string[] tags, uint256 creationTime);
     event ListingDeactivated(uint256 listingId, address creator);
@@ -46,6 +48,9 @@ contract ListingContract is Ownable {
         uint256 _rentPricePerHour,
         string[] memory _tags  
     ) public returns (uint256) {
+        require(!ipfsLinkExists[_ipfsLink], "Dataset with this IPFS link already exists");
+        require(!ipfsLinkExists[_previewIpfsLink], "Dataset with this preview IPFS link already exists");
+
         uint256 listingId = nextListingId++;
         uint256 creationTime = block.timestamp;
 
@@ -63,8 +68,8 @@ contract ListingContract is Ownable {
             likes: 0
         });
 
-        // Initialize the likedBy mapping for this listing as empty (no user has liked yet)
-        // The mapping itself will be populated later when users interact with the "like" functionality.
+        ipfsLinkExists[_ipfsLink] = true;
+        ipfsLinkExists[_previewIpfsLink] = true;
 
         buyerAccess[msg.sender][listingId] = true;
 
