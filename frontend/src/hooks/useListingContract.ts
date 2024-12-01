@@ -14,6 +14,8 @@ const useListingContract = () => {
   const [fullDatasetLink, setFullDatasetLink] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const [likedBy, setLikedBy] = useState<Map<number, boolean>>(new Map()); // Track liked datasets
+
   const [ipfsLink, setIpfsLink] = useState<string>('');
   const [previewIpfsLink, setPreviewIpfsLink] = useState<string>('');
   const [price, setPrice] = useState<number>(0);
@@ -58,6 +60,7 @@ const useListingContract = () => {
       console.log('Fetched All Listings:', listings);
 
       setListingData(listings);
+      await fetchLikedDatasets(listings);
     } catch (err: any) {
       console.error('Error fetching listings:', err);
       toast.error('An error occurred while fetching the listings.');
@@ -65,6 +68,71 @@ const useListingContract = () => {
       setIsLoading(false);
     }
   }, [provider]);
+
+  // Fetch the liked datasets for the user
+  const fetchLikedDatasets = useCallback(async (listings: Listing[]) => {
+    if (!provider) return;
+
+    const contract = getListingContract(provider);
+    const signer = provider.getSigner();
+    const contractWithSigner = contract.connect(signer);
+
+    try {
+      const likedState = new Map<number, boolean>();
+
+      for (const listing of listings) {
+        const isLiked = await contractWithSigner.likedBy(listing.id, await signer.getAddress());
+        likedState.set(listing.id, isLiked);
+      }
+
+      setLikedBy(likedState);
+    } catch (err: any) {
+      console.error('Error fetching liked datasets:', err);
+      toast.error('An error occurred while fetching the liked datasets.');
+    }
+  }, [provider]);
+
+  const likeDataset = async (datasetId: number) => {
+    if (!provider) return;
+
+    const contract = getListingContract(provider);
+    const signer = provider.getSigner();
+    const contractWithSigner = contract.connect(signer);
+
+    try {
+      const tx = await contractWithSigner.likeDataset(datasetId);
+      console.log('Like transaction sent:', tx);
+      await tx.wait();
+      console.log('Dataset liked successfully.');
+
+      // Update the liked state immediately
+      setLikedBy((prev) => new Map(prev).set(datasetId, true));
+    } catch (error) {
+      console.error('Error liking dataset:', error);
+      toast.error('An error occurred while liking the dataset.');
+    }
+  };
+
+  const removeLikeDataset = async (datasetId: number) => {
+    if (!provider) return;
+
+    const contract = getListingContract(provider);
+    const signer = provider.getSigner();
+    const contractWithSigner = contract.connect(signer);
+
+    try {
+      const tx = await contractWithSigner.removeLikeDataset(datasetId);
+      console.log('Remove like transaction sent:', tx);
+      await tx.wait();
+      console.log('Dataset unliked successfully.');
+
+      // Update the liked state immediately
+      setLikedBy((prev) => new Map(prev).set(datasetId, false));
+    } catch (error) {
+      console.error('Error removing like:', error);
+      toast.error('An error occurred while removing the like.');
+    }
+  };
 
   const createNewListing = async (
     previewCid: string,
@@ -148,7 +216,10 @@ const useListingContract = () => {
     createNewListing,
     fullDatasetLink,
     error,
-    fetchFullDatasetLink
+    fetchFullDatasetLink,
+    likedBy,  // Liked dataset state
+    likeDataset, // Function to like
+    removeLikeDataset, // Function to remove like
   };
 };
 

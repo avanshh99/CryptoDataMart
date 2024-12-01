@@ -17,7 +17,7 @@ import DownloadFullDatasetSection from "../components/DownloadFullDatasetSection
 
 const DatasetPage = () => {
   const { id } = useParams();
-  const { listingData } = useListingContract();
+  const { listingData, likedBy } = useListingContract(); // Now get the likedBy state
   const {
     promptTemplate,
     loading: promptLoading,
@@ -70,6 +70,8 @@ const DatasetPage = () => {
     return <div>Dataset not found.</div>;
   }
 
+  const likedByUser = likedBy.get(dataset.id) || false;
+
   return (
     <div>
       <div className="w-full flex justify-center bg-background drop-shadow-2xl">
@@ -81,6 +83,7 @@ const DatasetPage = () => {
             datasetId={dataset.id}
             creationTime={dataset.creationTime}
             tags={dataset.tags}
+            likedByUser={likedByUser} 
           />
           <DatasetDescription
             description={generatedDescription}
