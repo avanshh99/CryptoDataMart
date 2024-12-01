@@ -155,13 +155,13 @@ const DashboardPage = () => {
               >
                 <Link to={`/dashboard/dataset/${listing.id}`}>
                   <h3 className="font-bold text-lg text-primary_text line-clamp-1 hover:underline">
-                    Title Placeholder: {`Dataset #${listing.id + 1}`}
+                    {`Dataset #${listing.id + 1}`}
                   </h3>
                 </Link>
 
                 <div className="mb-2">
                   <p className="text-primary/80">Price: {listing.price.toString()} Wei</p>
-                  <p className="text-primary/80">Rent per Hour: {listing.rentPricePerHour.toString()} Wei/hr</p>
+                  {/* <p className="text-primary/80">Rent per Hour: {listing.rentPricePerHour.toString()} Wei/hr</p> */}
                 </div>
 
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center text-secondary_text mt-4">

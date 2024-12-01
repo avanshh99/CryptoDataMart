@@ -8,7 +8,7 @@ import useGeminiQuery from "../hooks/useGeminiQuery";
 
 const AddDatasetPage = () => {
   const [price, setPrice] = useState(0);
-  const [rent, setRent] = useState(0);
+  const [rent] = useState(0);
   const [tags, setTags] = useState<string[]>([]);
   const [newTag, setNewTag] = useState("");
   const [fileName, setFileName] = useState<string>("");
@@ -192,20 +192,6 @@ const AddDatasetPage = () => {
                 onChange={(e) => setPrice(e.target.valueAsNumber)}
                 className="w-full p-2 border rounded-lg"
                 placeholder="Write the price of dataset here."
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-primary_text font-bold mb-2" htmlFor="rent">Rent (Wei / hr)</label>
-              <input
-                autoFocus
-                id="rent"
-                type="number"
-                value={rent}
-                onChange={(e) => setRent(e.target.valueAsNumber)}
-                className="w-full p-2 border rounded-lg"
-                placeholder="Write the rent of dataset here."
                 required
               />
             </div>
