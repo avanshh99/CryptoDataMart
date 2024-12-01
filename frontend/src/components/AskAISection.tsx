@@ -134,7 +134,6 @@ const AskAISection: React.FC<AskAISectionProps> = ({ csvData }) => {
 
       <form onSubmit={handleQuerySubmit} className="mt-4">
         <input
-          autoFocus
           id="askAI"
           type="text"
           value={userQuery}

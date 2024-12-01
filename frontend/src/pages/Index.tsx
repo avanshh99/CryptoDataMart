@@ -2,6 +2,7 @@ import MainHero from "../components/MainHero.js";
 import Header from "../components/Header.js";
 import About from "../components/About.js";
 import MainHeroImage from "../components/MainHeroImage.js";
+import Product from "../components/Product.js";
 export default function IndexPage() {
   return (
     <div
@@ -16,6 +17,7 @@ export default function IndexPage() {
 
           <MainHeroImage />
         </div>
+        <Product />
       </div>
       <About />
     </div>

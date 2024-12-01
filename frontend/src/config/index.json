@@ -11,7 +11,7 @@
     "mainHero": {
       "title": "Welcome to CryptoDataMart",
       "subtitle": "Empower Your CryptoDataMart Journey",
-      "description": "CryptoDataMart is a Blockchain-Powered AI Marketplace that enables users to buy, sell, or rent AI models and datasets directly from creators. This decentralized platform allows AI researchers and developers to securely monetize their work and collaborate on AI projects using smart contracts. With features like decentralized licensing, AI model and dataset marketplaces, and transparent reward distribution, CryptoDataMart empowers creators while maintaining data privacy and security.",
+      "description": "CryptoDataMart is a Blockchain-powered marketplace for the GenAI community, where users can buy, sell, and access AI models and datasets. It enables secure collaboration using smart contracts, with features like decentralized licensing and a playground for adding and discussing datasets, all while ensuring data privacy and security.",
       "img": "/assets/images/hero_image.png",
       "primaryAction": {
         "text": "Dashboard",
@@ -21,5 +21,30 @@
         "text": "Community",
         "to": "/community"
       }
+    },
+    "product": {
+      "title": "CryptoDataMart Features",
+      "items": [
+        {
+          "title": "AI Model & Dataset Marketplace",
+          "description": "Explore and trade AI models and datasets securely. Directly buy or sell resources, ensuring full ownership and transparency with decentralized licensing and blockchain-powered transactions.",
+          "img": "/assets/images/dashboard.png"
+        },
+        {
+          "title": "Collaborative Playground",
+          "description": "Add and share datasets, ask questions, and collaborate with the community. Our interactive playground fosters innovation, allowing users to test models and discuss solutions in real-time.",
+          "img": "/assets/images/playground.png"
+        },
+        {
+          "title": "AI-Generated Dataset Descriptions",
+          "description": "Each dataset listed on CryptoDataMart comes with an AI-generated description, providing detailed insights and context to help users understand and evaluate the data more efficiently.",
+          "img": "/assets/images/ai_description.png"
+        },
+        {
+          "title": "Auto-Generated Tags for Datasets",
+          "description": "When uploading datasets, CryptoDataMart automatically generates relevant tags, making it easier for users to discover and categorize datasets based on key characteristics and content.",
+          "img": "/assets/images/ai_tags.png"
+        }
+      ]
     }
   }
