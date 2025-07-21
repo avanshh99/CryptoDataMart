@@ -1,44 +1,49 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ethers } from 'ethers';
-import { getPaymentContract } from '../utils/contract'; 
+import { getPaymentContract } from '../utils/contract';
 import toast from 'react-hot-toast';
 
 const usePaymentContract = () => {
-  const [provider, setProvider] = useState<ethers.providers.Web3Provider | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [signer, setSigner] = useState<ethers.Signer | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    const initProvider = async () => {
-      if (window.ethereum) {
+    const init = async () => {
+      if (!window.ethereum) {
+        toast.error('MetaMask is not installed');
+        return;
+      }
+
+      try {
+        await window.ethereum.request({ method: 'eth_requestAccounts' });
         const web3Provider = new ethers.providers.Web3Provider(window.ethereum);
-        setProvider(web3Provider);
-        console.log('Ethereum provider initialized');
-      } else {
-        toast.error('Please install MetaMask to interact with the blockchain.');
+        setSigner(web3Provider.getSigner());
+      } catch (err) {
+        console.error('Wallet connection failed', err);
+        toast.error('Wallet connection rejected');
       }
     };
 
-    initProvider();
+    init();
   }, []);
 
+  const paymentContract = useMemo(() => {
+    return signer ? getPaymentContract(signer) : null;
+  }, [signer]);
+
   const buyDataset = async (listingId: number, price: number) => {
-    if (!provider) return;
+    if (!paymentContract) return toast.error('Contract not ready');
 
     setIsLoading(true);
-
-    const contract = getPaymentContract(provider);
-    const signer = provider.getSigner();
-    const contractWithSigner = contract.connect(signer);
-
     try {
-      const tx = await contractWithSigner.buyDataset(listingId, {
-        value: ethers.utils.parseUnits(price.toString(), "wei"),
+      const tx = await paymentContract.buyDataset(listingId, {
+        value: ethers.utils.parseUnits(price.toString(), 'wei'),
       });
-      await tx.wait(); 
-      toast.success("Dataset purchased successfully!");
+      await tx.wait();
+      toast.success('Dataset purchased successfully!');
     } catch (err: any) {
-      console.error("Error purchasing dataset:", err);
-      toast.error(`Error purchasing dataset: ${err.message || err}`);
+      console.error('Buy error:', err);
+      toast.error(err.reason || err.message || 'Transaction failed');
     } finally {
       setIsLoading(false);
     }

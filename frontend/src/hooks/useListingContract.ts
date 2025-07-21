@@ -1,136 +1,130 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { ethers } from 'ethers';
-import { fetchListingData, fetchNextListingId } from '../utils/listingContractHelpers';
 import { getListingContract } from '../utils/contract';
-import toast from 'react-hot-toast';
+import { fetchListingData, fetchNextListingId } from '../utils/listingContractHelpers';
 import { Listing } from '../types/listing';
+import toast from 'react-hot-toast';
 
 const useListingContract = () => {
-  const [provider, setProvider] = useState<ethers.providers.Web3Provider | null>(null);
+  const [signer, setSigner] = useState<ethers.Signer | null>(null);
   const [listingData, setListingData] = useState<Listing[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [creatingListing, setCreatingListing] = useState<boolean>(false);
-
+  const [isLoading, setIsLoading] = useState(false);
+  const [creatingListing, setCreatingListing] = useState(false);
   const [fullDatasetLink, setFullDatasetLink] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [likedBy, setLikedBy] = useState<Map<number, boolean>>(new Map());
 
-  const [likedBy, setLikedBy] = useState<Map<number, boolean>>(new Map()); // Track liked datasets
-
-  const [ipfsLink, setIpfsLink] = useState<string>('');
-  const [previewIpfsLink, setPreviewIpfsLink] = useState<string>('');
-  const [price, setPrice] = useState<number>(0);
-  const [rentPricePerHour, setRentPricePerHour] = useState<number>(0);
+  const [ipfsLink, setIpfsLink] = useState('');
+  const [previewIpfsLink, setPreviewIpfsLink] = useState('');
+  const [price, setPrice] = useState(0);
+  const [rentPricePerHour, setRentPricePerHour] = useState(0);
   const [tags, setTags] = useState<string[]>([]);
 
+  // Initialize signer from MetaMask
   useEffect(() => {
-    const initProvider = async () => {
-      if (window.ethereum) {
-        const web3Provider = new ethers.providers.Web3Provider(window.ethereum);
-        setProvider(web3Provider);
-        console.log('Ethereum provider initialized');
-      } else {
-        toast.error('Please install MetaMask to interact with the blockchain.');
+    const init = async () => {
+      if (!window.ethereum) {
+        toast.error('MetaMask is not installed');
+        return;
+      }
+
+      try {
+        await window.ethereum.request({ method: 'eth_requestAccounts' });
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const signerInstance = provider.getSigner();
+        const address = await signerInstance.getAddress();
+        console.log('Connected wallet:', address);
+        setSigner(signerInstance);
+      } catch (err) {
+        console.error('Wallet connection error:', err);
+        toast.error('Failed to connect wallet');
       }
     };
 
-    initProvider();
+    init();
   }, []);
 
-  useEffect(() => {
-    if (provider) {
-      fetchAllListings();
+  // Memoize contract
+  const contract = useMemo(() => {
+    if (!signer) {
+      console.warn('Signer not ready for contract');
+      return null;
     }
-  }, [provider]);
+    return getListingContract(signer);
+  }, [signer]);
 
+  // Fetch all listings
   const fetchAllListings = useCallback(async () => {
-    if (!provider) return;
+    if (!contract || !signer) {
+      console.warn('Contract not ready to fetch listings');
+      return;
+    }
 
     setIsLoading(true);
-
     try {
-      const nextListingId = await fetchNextListingId(provider);
-      console.log('Next Listing ID:', nextListingId.toString());
-
-      const listingsPromises = [];
-      for (let i = 0; i < nextListingId.toNumber(); i++) {
-        listingsPromises.push(fetchListingData(provider, i));
-      }
-
-      const listings = await Promise.all(listingsPromises);
-      console.log('Fetched All Listings:', listings);
-
+      const nextListingId = await fetchNextListingId(signer);
+      const promises = Array.from({ length: nextListingId.toNumber() }, (_, i) =>
+        fetchListingData(signer, i)
+      );
+      const listings = await Promise.all(promises);
       setListingData(listings);
       await fetchLikedDatasets(listings);
-    } catch (err: any) {
-      console.error('Error fetching listings:', err);
-      toast.error('An error occurred while fetching the listings.');
+    } catch (err) {
+      toast.error('Error fetching listings');
+      console.error(err);
     } finally {
       setIsLoading(false);
     }
-  }, [provider]);
+  }, [contract, signer]);
 
-  // Fetch the liked datasets for the user
   const fetchLikedDatasets = useCallback(async (listings: Listing[]) => {
-    if (!provider) return;
-
-    const contract = getListingContract(provider);
-    const signer = provider.getSigner();
-    const contractWithSigner = contract.connect(signer);
+    if (!contract || !signer) return;
 
     try {
-      const likedState = new Map<number, boolean>();
+      const address = await signer.getAddress();
+      const likedMap = new Map<number, boolean>();
 
       for (const listing of listings) {
-        const isLiked = await contractWithSigner.likedBy(listing.id, await signer.getAddress());
-        likedState.set(listing.id, isLiked);
+        const isLiked = await contract.likedBy(listing.id, address);
+        likedMap.set(listing.id, isLiked);
       }
 
-      setLikedBy(likedState);
-    } catch (err: any) {
-      console.error('Error fetching liked datasets:', err);
-      toast.error('An error occurred while fetching the liked datasets.');
+      setLikedBy(likedMap);
+    } catch (err) {
+      toast.error('Failed to fetch liked datasets');
+      console.error(err);
     }
-  }, [provider]);
+  }, [contract, signer]);
+
+  useEffect(() => {
+    if (contract && signer) {
+      fetchAllListings();
+    }
+  }, [contract, signer, fetchAllListings]);
 
   const likeDataset = async (datasetId: number) => {
-    if (!provider) return;
-
-    const contract = getListingContract(provider);
-    const signer = provider.getSigner();
-    const contractWithSigner = contract.connect(signer);
+    if (!contract) return toast.error('Contract not ready');
 
     try {
-      const tx = await contractWithSigner.likeDataset(datasetId);
-      console.log('Like transaction sent:', tx);
+      const tx = await contract.likeDataset(datasetId);
       await tx.wait();
-      console.log('Dataset liked successfully.');
-
-      // Update the liked state immediately
       setLikedBy((prev) => new Map(prev).set(datasetId, true));
-    } catch (error) {
-      console.error('Error liking dataset:', error);
-      toast.error('An error occurred while liking the dataset.');
+    } catch (err) {
+      toast.error('Failed to like dataset');
+      console.error(err);
     }
   };
 
   const removeLikeDataset = async (datasetId: number) => {
-    if (!provider) return;
-
-    const contract = getListingContract(provider);
-    const signer = provider.getSigner();
-    const contractWithSigner = contract.connect(signer);
+    if (!contract) return toast.error('Contract not ready');
 
     try {
-      const tx = await contractWithSigner.removeLikeDataset(datasetId);
-      console.log('Remove like transaction sent:', tx);
+      const tx = await contract.removeLikeDataset(datasetId);
       await tx.wait();
-      console.log('Dataset unliked successfully.');
-
-      // Update the liked state immediately
       setLikedBy((prev) => new Map(prev).set(datasetId, false));
-    } catch (error) {
-      console.error('Error removing like:', error);
-      toast.error('An error occurred while removing the like.');
+    } catch (err) {
+      toast.error('Failed to remove like');
+      console.error(err);
     }
   };
 
@@ -141,65 +135,43 @@ const useListingContract = () => {
     rentPricePerHour: number,
     tags: string[]
   ) => {
-    if (!provider) return;
+    if (!contract) return toast.error('Contract not ready');
 
     setCreatingListing(true);
-
-    const contract = getListingContract(provider);
-    const signer = provider.getSigner();
-    const contractWithSigner = contract.connect(signer);
-
     try {
-      const tx = await contractWithSigner.createListing(
-        fullCid,
-        previewCid,
-        price,
-        rentPricePerHour,
-        tags
-      );
-
-      console.log('Transaction sent:', tx);
+      const tx = await contract.createListing(fullCid, previewCid, price, rentPricePerHour, tags);
       await tx.wait();
-      console.log('Listing created successfully.');
-
-      toast.success('Listing created successfully.');
+      toast.success('Listing created successfully');
       fetchAllListings();
-    } catch (err: any) {
-      console.error('Error creating listing:', err);
-      toast.error('An error occurred while creating the listing.');
+    } catch (err) {
+      toast.error('Error creating listing');
+      console.error(err);
     } finally {
       setCreatingListing(false);
     }
   };
 
   const fetchFullDatasetLink = useCallback(async (datasetId: number) => {
-    if (!provider) {
-      setError('Provider not initialized');
+    if (!contract) {
+      setError('Contract not ready');
       return;
     }
 
     setIsLoading(true);
-    setError(null); 
-
+    setError(null);
     try {
-      const contract = getListingContract(provider); 
-      const contractWithSigner = contract.connect(provider.getSigner());
-
-      const ipfsLink = await contractWithSigner.getFullIPFSLink(datasetId);
-
-      const fullUrl = `https://gateway.pinata.cloud/ipfs/${ipfsLink}`;
-
-      setFullDatasetLink(fullUrl); 
-    } catch (err: any) {
+      const ipfsHash = await contract.getFullIPFSLink(datasetId);
+      const fullUrl = `https://gateway.pinata.cloud/ipfs/${ipfsHash}`;
+      setFullDatasetLink(fullUrl);
+    } catch (err) {
+      setError('Access denied or error occurred');
       setFullDatasetLink(null);
-      setError('You do not have access to the full dataset or an error occurred.');
     } finally {
       setIsLoading(false);
     }
-  }, [provider]);
+  }, [contract]);
 
   return {
-    provider,
     listingData,
     isLoading,
     creatingListing,
@@ -217,9 +189,9 @@ const useListingContract = () => {
     fullDatasetLink,
     error,
     fetchFullDatasetLink,
-    likedBy,  // Liked dataset state
-    likeDataset, // Function to like
-    removeLikeDataset, // Function to remove like
+    likedBy,
+    likeDataset,
+    removeLikeDataset,
   };
 };
 

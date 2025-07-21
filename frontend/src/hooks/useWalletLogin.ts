@@ -1,35 +1,53 @@
 import { useDispatch } from 'react-redux';
 import { setWalletAddress, disconnectWallet } from '../redux/wallet/walletSlice';
 import toast from 'react-hot-toast';
+import { useEffect } from 'react';
 
 const useWalletLogin = () => {
   const dispatch = useDispatch();
 
-  const connectWallet = async () => {
-    if (window.ethereum) {
-      try {
-        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+const connectWallet = async () => {
+  if (window.ethereum) {
+    try {
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
 
-        if (accounts.length > 0) {
-          dispatch(setWalletAddress(accounts[0]));
-
-          toast.success(`Successfully connected as: ${accounts[0]}`)
-        } else {
-        console.error('No accounts found in MetaMask');
-        }
-      } catch (error: any) {
-        console.error('Error connecting to MetaMask:', error);
-        alert('Could not connect to MetaMask. Please try again.');
+      if (accounts.length > 0) {
+        dispatch(setWalletAddress(accounts[0]));
+        localStorage.setItem('walletConnected', 'true');
+        toast.success(`Connected as: ${accounts[0]}`);
       }
-    } else {
-      alert('MetaMask is not installed. Please install MetaMask!');
+    } catch (error: any) {
+      console.error('MetaMask connection error:', error);
+    }
+  } else {
+    alert('MetaMask not installed.');
+  }
+};
+
+const disconnectWalletHandler = () => {
+  dispatch(disconnectWallet());
+  localStorage.setItem('walletConnected', 'false'); // ✅ Mark as disconnected
+  toast.success('Disconnected!');
+};
+
+
+useEffect(() => {
+  const autoConnect = async () => {
+    const shouldConnect = localStorage.getItem('walletConnected') === 'true';
+
+    if (window.ethereum && shouldConnect) {
+      const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+
+      if (accounts.length > 0) {
+        dispatch(setWalletAddress(accounts[0]));
+        toast.success(`Reconnected: ${accounts[0]}`);
+      }
     }
   };
 
-  const disconnectWalletHandler = () => {
-    dispatch(disconnectWallet());
-    toast.success(`Successfully disconnected!`)
-  };
+  autoConnect();
+}, [dispatch]);
+
 
   return { connectWallet, disconnectWalletHandler };
 };
