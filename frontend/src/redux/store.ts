@@ -1,12 +1,32 @@
-import { configureStore } from '@reduxjs/toolkit';
-import walletReducer from './wallet/walletSlice';
+import { configureStore, combineReducers } from '@reduxjs/toolkit';
+import storage from 'redux-persist/lib/storage'; // defaults to localStorage
+import { persistStore, persistReducer } from 'redux-persist';
 
-const store = configureStore({
-  reducer: {
-    wallet: walletReducer,
-  },
+import walletReducer from './wallet/walletSlice';
+import descriptionReducer from './description/descriptionSlice';
+
+const persistConfig = {
+  key: 'root',
+  storage,
+  whitelist: ['descriptions'], 
+};
+
+const rootReducer = combineReducers({
+  wallet: walletReducer,
+  descriptions: descriptionReducer,
 });
 
-export type RootState = ReturnType<typeof store.getState>;
+const persistedReducer = persistReducer(persistConfig, rootReducer);
 
+export const store = configureStore({
+  reducer: persistedReducer,
+  middleware: getDefaultMiddleware =>
+    getDefaultMiddleware({
+      serializableCheck: false, 
+    }),
+});
+
+export const persistor = persistStore(store);
+export type RootState = ReturnType<typeof store.getState>;
+export type AppDispatch = typeof store.dispatch;
 export default store;
